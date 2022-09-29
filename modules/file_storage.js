@@ -18,25 +18,25 @@ let WEB3_STORAGE_URL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXR
     try {
       let file_id = uuidv4();
 
-      const stats = fs.statSync(file); // file details
+      // file details
+      const stats = fs.statSync(file); 
       let totalSize = stats.size;
-      //save file assocation for each shard
-      let file_shards = [];
-      //iterate through each file chunk that has been encrypted
       let i = 0;
       let size_so_far = 0;
       let name = path.basename(file);
       let type = path.extname(file);
-      let document_hash = await streamEncrypt(file, async (encrypted_bytes, encryption_key)=>{
+      let file_shards = [];
+
+      let document_hash = await streamEncrypt(file, async (encrypted_bytes, encryption_key, chunkLength)=>{
          // create the encryption key id
         let encryption_key_id = uuidv4();
 
         // //save the file to ipfs
         let encrypted_file = new File([encrypted_bytes],name,{type});
-        let cid = await storeWithProgress(WEB3_STORAGE_URL,[encrypted_file], size_so_far/totalSize, totalSize, callback);
+        let cid = await storeWithProgress(WEB3_STORAGE_URL,[encrypted_file], size_so_far/totalSize, totalSize, chunkLength, callback);
 
         // //save the file shard assocation with SelfGuard
-        size_so_far+=encrypted_bytes.byteLength;
+        size_so_far+=chunkLength;
         file_shards.push({cid, index:i, encryption_key:{key: encryption_key, id:encryption_key_id}});
         i++;
       });
@@ -74,12 +74,13 @@ export async function decryptFile(file_id, callback){
           encryption_key = encryption_key.key;
           //retrieve file from ipfs
           let encrypted_file = await retrieveIPFSFile(cid, name, type);
-          //callback showing progress of decryption
-          if(typeof callback === 'function') callback(null, Math.floor((i+1)/file_shards.length*100))
 
           //decrypt the file and append to new file based on the original name
           let decrypted_shard = await decryptShard(encrypted_file, encryption_key);
           await appendFile(name, decrypted_shard);
+
+          //callback showing progress of decryption
+          if(typeof callback === 'function') callback(null, (((i+1)/file_shards.length)*100).toFixed(3))
         }
         catch(err){
           console.log({err});

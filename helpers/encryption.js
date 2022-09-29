@@ -58,7 +58,7 @@ async function generateEncryptionKey(){
 export async function encryptBytes(plaintextbytes){
 	try {
 		let {ivbytes, key, passphrase, pbkdf2salt} = await generateEncryptionKey();
-		var cipherbytes= await crypto.subtle.encrypt({name: "AES-CBC", iv: ivbytes}, key, plaintextbytes).catch(function(err){});
+		var cipherbytes= await crypto.subtle.encrypt({name: "AES-CBC", iv: ivbytes}, key, plaintextbytes);
 
 		if(!cipherbytes) return;
 
@@ -103,7 +103,7 @@ export async function decryptBytes(bytes, encryption_key){
 	var pbkdf2salt = bytes.slice(8,16);
 	let cipherbytes = bytes.slice(16);
 	let {key, ivbytes} = await extractKeyBytes(pbkdf2salt, encryption_key, 'decrypt');
-	var plaintextbytes = await crypto.subtle.decrypt({name: "AES-CBC", iv: ivbytes}, key, cipherbytes).catch(function(err){});
+	var plaintextbytes = await crypto.subtle.decrypt({name: "AES-CBC", iv: ivbytes}, key, cipherbytes)
 	if (!plaintextbytes) return;
 	return new Uint8Array(plaintextbytes);
 }
@@ -166,7 +166,7 @@ export async function streamEncrypt(path, chunk_function){
 	const stats = fs.statSync(path); // file details
 	let totalSize = stats.size;
 
-	let chunk_size = totalSize > 1000*1000*1000 ? 200*1000*1000 : totalSize/5;
+	let chunk_size = totalSize > 5000*1000*1000 ? 1000*1000*1000 : totalSize/5;
 	if(totalSize <= 5) chunk_size = totalSize;
 
 	for await( const chunk of generateChunks(path, chunk_size)) {
@@ -175,7 +175,7 @@ export async function streamEncrypt(path, chunk_function){
 		let {encryption_key, encrypted_bytes} = await encryptBytes(chunk);
 
 		//run the chunk function on the data
-		await chunk_function(encrypted_bytes, encryption_key);
+		await chunk_function(encrypted_bytes, encryption_key, chunk.byteLength);
 	}
 	return hmac.digest('hex');
 }

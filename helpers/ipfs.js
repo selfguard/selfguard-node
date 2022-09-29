@@ -55,21 +55,23 @@ export async function retrieveIPFSFile(cid, name, type) {
  * @param files - an array of files to store
  * @returns A promise that resolves to the root cid of the file.
  */
-export async function storeWithProgress(token, files, finishedSoFar, fileSize, callback) {
+export async function storeWithProgress(token, files, finishedSoFar, fileSize, chunkLength, callback) {
   return new Promise((resolve, reject) => {
     let cid = null;
     // when each chunk is stored, update the percentage complete and display
     const totalSize = files.map((f) => f.size).reduce((a, b) => a + b, 0);
     let uploaded = 0;
 
+    let ratio = chunkLength / totalSize;
     // show the root cid as soon as it's ready
     const onRootCidReady = async (c) => {
       cid = c;
     };
 
     const onStoredChunk = async (size) => {
-      uploaded += size;
-      if(typeof callback === 'function') callback(null, Math.floor(100*(finishedSoFar + uploaded/fileSize)));
+      uploaded+= size
+      if(uploaded > totalSize) uploaded = totalSize;
+      if(typeof callback === 'function') callback(null, (100*(finishedSoFar + ((uploaded*ratio)/fileSize)).toFixed(2)))
       const pct = (uploaded / totalSize);
       if(pct >= 1) resolve(cid);
     };
