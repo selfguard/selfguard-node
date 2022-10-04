@@ -2,7 +2,7 @@
  * It sends an email to the address provided.
  * @returns A boolean value of true if the email was sent.
  */
-export async function sendEmail({
+ export async function sendEmail({
   address,
   from,
   fromName,

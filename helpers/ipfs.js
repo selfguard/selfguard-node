@@ -1,6 +1,4 @@
 import { Web3Storage } from "web3.storage";
-import { Crypto } from "@peculiar/webcrypto";
-let crypto = new Crypto();
 import axios from "axios";
 import { Blob } from "fetch-blob";
 

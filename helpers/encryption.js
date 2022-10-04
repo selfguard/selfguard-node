@@ -58,7 +58,7 @@ async function generateEncryptionKey(){
 export async function encryptBytes(plaintextbytes){
 	try {
 		let {ivbytes, key, passphrase, pbkdf2salt} = await generateEncryptionKey();
-		var cipherbytes= await crypto.subtle.encrypt({name: "AES-CBC", iv: ivbytes}, key, plaintextbytes);
+		var cipherbytes= await crypto.subtle.encrypt({name: "AES-CBC", iv: ivbytes}, key, plaintextbytes).catch(function(err){});
 
 		if(!cipherbytes) return;
 
@@ -103,7 +103,7 @@ export async function decryptBytes(bytes, encryption_key){
 	var pbkdf2salt = bytes.slice(8,16);
 	let cipherbytes = bytes.slice(16);
 	let {key, ivbytes} = await extractKeyBytes(pbkdf2salt, encryption_key, 'decrypt');
-	var plaintextbytes = await crypto.subtle.decrypt({name: "AES-CBC", iv: ivbytes}, key, cipherbytes)
+	var plaintextbytes = await crypto.subtle.decrypt({name: "AES-CBC", iv: ivbytes}, key, cipherbytes).catch(function(err){});
 	if (!plaintextbytes) return;
 	return new Uint8Array(plaintextbytes);
 }
