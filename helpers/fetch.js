@@ -1,5 +1,6 @@
 import axios from "axios";
 import QuickEncrypt from 'quick-encrypt';
+import {encryptData, decryptData, getPublicKey} from "./metamask.js";
 
 export default class Fetch {
 
@@ -10,159 +11,196 @@ export default class Fetch {
     this.private_key = private_key; //optional
   }
 
+  async send(link,data){
+    axios.defaults.headers.common = {
+      "X-API-Key": this.api_key
+    };
+    let result = await axios.post(this.url + link,{data:data});
+    return result;
+  }
+
+  //Asymmetric Encryption Functions
+  async asymmetricEncryption(data, metamaskKey){
+    if(this.pub_key && this.pub_key !== 'metamask') {
+      data = QuickEncrypt.encrypt(data, this.pub_key) // wrap with public key
+    }
+    else if(this.pub_key === 'metamask') {
+      if(!metamaskKey) metamaskKey = await getPublicKey();
+      return await encryptData(data, metamaskKey);
+    }
+    return {ciphertext:data, metamask_address:null};
+  }
+  
+  async asymmetricDecryption(public_key, metamask_address, data){
+    if(public_key === this.pub_key && public_key != null && this.pub_key != 'metamask') {
+      data = QuickEncrypt.decrypt(data, this.private_key) // unwrap with private key
+    }
+    else if(public_key === this.pub_key && this.pub_key === 'metamask') {
+      data = await decryptData(metamask_address, data);
+    }
+    if(public_key && this.pub_key !== public_key){
+      throw new Error("Public key mismatch for decryption")
+    }
+    return data;
+  }
+
   // Encryption Keys
   async saveEncryptionKey(encryption_key){
-    let public_key = this.pub_key;
 
-    if(public_key) encryption_key = QuickEncrypt.encrypt(encryption_key, this.pub_key) // wrap with public key
-
-    let result = await axios.post(this.url + "/saveEncryptionKey",{data:{public_key, key:encryption_key, api_key:this.api_key}});
+    let {ciphertext, metamask_address} = await this.asymmetricEncryption(encryption_key);
+    
+    let result = await this.send("/saveEncryptionKey",{public_key:this.pub_key, metamask_address, key:ciphertext});
     return result.data;
   }
 
   async retrieveEncryptionKey(id){
-    let pub_key = this.pub_key;
 
-    let result = await axios.post(this.url + "/retrieveEncryptionKey",{data:{id, api_key:this.api_key}});
-    let {key, public_key} = result.data.encryption_keys[0];
-    
-    if(public_key === pub_key && pub_key != null) key = QuickEncrypt.decrypt(key, this.private_key) // unwrap with private key
+    let result = await this.send("/retrieveEncryptionKey",{id});
+    let {key, public_key, metamask_address} = result.data.encryption_keys[0];
+
+    key = await this.asymmetricDecryption(public_key, metamask_address, key);
+
     return key;
   }
 
   //File Storage
   async saveFileAssociation({id, name, type, document_hash, file_shards})  {
-    let public_key = this.pub_key;
+    let metamaskKey = this.pub_key === 'metamask' ? await getPublicKey() : null;
 
-    if(public_key) {
-      file_shards = file_shards.map((f)=>{
-        f.encryption_key.key = QuickEncrypt.encrypt(f.encryption_key.key, public_key) // wrap with public key
-        return f;
-      });
-    }
+    file_shards = await Promise.all(file_shards.map(async (f)=>{
+      let {ciphertext, metamask_address} = await this.asymmetricEncryption(f.encryption_key.key,metamaskKey);
+      f.encryption_key.key = ciphertext;
+      f.encryption_key.metamask_address = metamask_address;
+      return f;
+    }));
 
-    let result = await axios.post(this.url + "/saveFileAssociation",{data:{public_key, api_key:this.api_key,id, name, type, document_hash, file_shards}});
+    let result = await this.send("/saveFileAssociation",{public_key:this.pub_key,id, name, type, document_hash, file_shards});
     return result.data
   }
 
   async retrieveFile(id){
-    let result = await axios.post(this.url + "/retrieveFile",{data:{api_key:this.api_key, id}});
-    let private_key = this.private_key;
-    if(result && result.data){
-      result.data.file_shards = result.data.file_shards.map((shard)=>{
-        if(private_key) {
-          shard.encryption_key = QuickEncrypt.decrypt(shard.encryption_key, private_key) // unwrap with private key
-        }
-        return shard;
-      });
-    }
+    let result = await this.send("/retrieveFile",{id});
+    result.data.file_shards = await Promise.all(result.data.file_shards.map(async (shard)=>{
+      shard.encryption_key = await this.asymmetricDecryption(shard.public_key, shard.metamask_address, shard.encryption_key);
+      return shard;
+    }));
     return result.data
   }
 
   async retrieveFiles(){
-    let result = await axios.post(this.url + "/retrieveFiles",{data:{api_key:this.api_key}});
+    let result = await this.send("/retrieveFiles",{});
     return result.data
   }
   
    // Tokenization 
    async saveTokenizedData({id, ciphertext, encryption_key_id}){
-    let result = await axios.post(this.url + "/saveTokenizedData",{data:{id, ciphertext, encryption_key_id, api_key:this.api_key}});
+    let result = await this.send("/saveTokenizedData",{id, ciphertext, encryption_key_id});
     return result.data;
   }
 
   async updateTokenizedData({id, ciphertext, encryption_key_id}){
-    let result = await axios.post(this.url + "/updateTokenizedData",{data:{id,ciphertext, encryption_key_id, api_key:this.api_key}});
+    let result = await this.send("/updateTokenizedData",{id,ciphertext, encryption_key_id});
     return result.data;
   }
 
   async retrieveTokenizedData({id}){
-    let result = await axios.post(this.url + "/retrieveTokenizedData",{data:{id,api_key:this.api_key}});
+    let result = await this.send("/retrieveTokenizedData",{id});
     return result.data;
   }
 
   // Key Pair
   async saveKeyPair({public_key, encrypted_private_key}){
-    let result = await axios.post(this.url + "/saveKeyPair",{data:{public_key, encrypted_private_key, api_key:this.api_key}});
+    let result = await this.send("/saveKeyPair",{public_key, encrypted_private_key});
     return result.data;
   }
 
   async retrieveKeyPairs(){
-    let result = await axios.post(this.url + "/retrieveKeyPairs",{data:{api_key:this.api_key}});
+    let result = await this.send("/retrieveKeyPairs",{});
     return result.data;
   }
  
 
   // Key Value 
   async saveKeyValueData({key, ciphertext, encryption_key_id}){
-    let result = await axios.post(this.url + "/saveKeyValueData",{data:{ key, ciphertext, encryption_key_id,api_key:this.api_key}});
+    let result = await this.send("/saveKeyValueData",{ key, ciphertext, encryption_key_id});
     return result.data;
   }
 
   async updateKeyValueData({key, ciphertext, encryption_key_id}){
-    let result = await axios.post(this.url + "/updateKeyValueData",{data:{ key, ciphertext, encryption_key_id, api_key:this.api_key}});
+    let result = await this.send("/updateKeyValueData",{ key, ciphertext, encryption_key_id});
     return result.data;
   }
 
   async retrieveKeyValueData({key}){
-    let result = await axios.post(this.url + "/retrieveKeyValueData",{data:{ key, api_key:this.api_key}});
+    let result = await this.send("/retrieveKeyValueData",{ key});
     return result.data;
   }
 
   async retrieveAllKeys({gte, limit}){
-    let result = await axios.post(this.url + "/retrieveAllKeys",{data:{ api_key:this.api_key, gte, limit}});
+    let result = await this.send("/retrieveAllKeys",{gte, limit});
     return result.data;
   }
 
    // Array 
    async initArray({name}) {
-    let result = await axios.post(this.url + "/initArray",{data:{name, api_key:this.api_key }});
+    let result = await this.send("/initArray",{name });
     return result.data;
   }
 
   async saveArrayEncryptionKey({name, encryption_key, user_pub_key}) {
-    let result = await axios.post(this.url + "/saveArrayEncryptionKey",{data:{name, encryption_key, user_pub_key, api_key:this.api_key}});
+    let result = await this.send("/saveArrayEncryptionKey",{name, encryption_key, user_pub_key});
     return result.data;
   }
 
   async saveArrayValue({ciphertext, name}) {
-    let result = await axios.post(this.url + "/saveArrayValue",{data:{ciphertext, name, api_key:this.api_key}});
+    let result = await this.send("/saveArrayValue",{ciphertext, name});
     return result.data;
   }
 
   async getArrayValues({gte, limit, name}) {
-    let result = await axios.post(this.url + "/getArrayValues",{data:{gte, limit, name, api_key: this.api_key}});
+    let result = await this.send("/getArrayValues",{gte, limit, name});
     return result.data;
   }
 
   async getArrayNames() {
-    let result = await axios.post(this.url + "/getArrayNames",{data:{api_key: this.api_key}});
+    let result = await this.send("/getArrayNames",{});
     return result.data;
   }
 
   async getArrayEncryptionKeys({name}) {
-    let result = await axios.post(this.url + "/getArrayEncryptionKeys",{data:{name, api_key:this.api_key}});
+    let result = await this.send("/getArrayEncryptionKeys",{name});
     return result.data;
   }
 
   // Notifications
+  async updateProfile({address, ciphertext, encryption_key_id}){
+    let result = await this.send("/updateProfile",{ address, ciphertext, encryption_key_id});
+    return result.data;
+  }
+
+  async getProfiles({gte, limit}){
+    let result = await this.send("/getProfiles",{ gte, limit });
+    return result.data;
+  }
+
+  async getProfile(address){
+    let result = await this.send("/getProfile",{ address });
+    return result.data;
+  }
+
   async sendSMSCall({address, text}) {
-    let result = await axios.post(this.url + "/sendSMS",{data:{ address, text, api_key:this.api_key}});
+    let result = await this.send("/sendSMS",{ address, text});
     return result.data;
   }
 
   async sendEmailCall({address, from, fromName, replyTo, replyToName, subject, html}) {
-    let result = await axios.post(this.url + "/sendEmail",{data:{ address, from, fromName, replyTo, replyToName, subject, html, api_key:this.api_key}});
+    let result = await this.send("/sendEmail",{ address, from, fromName, replyTo, replyToName, subject, html});
     return result.data;
   }
 
   // Events
   async retrieveEvents(){
-    let result = await axios.post(this.url + "/retrieveEvents",{data:{api_key:this.api_key}});
+    let result = await this.send("/retrieveEvents",{});
     return result.data;
   }
 }
-
-
-
-
-
