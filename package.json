@@ -10,6 +10,7 @@
     "node": ">=16.0.0"
   },
   "dependencies": {
+    "@metamask/eth-sig-util": "^5.0.0",
     "@peculiar/webcrypto": "^1.4.0",
     "axios": "^0.27.2",
     "crypto": "^1.0.1",
