@@ -2,25 +2,9 @@
  * It sends an email to the address provided.
  * @returns A boolean value of true if the email was sent.
  */
- export async function sendEmail({
-  address,
-  from,
-  fromName,
-  replyTo,
-  replyToName,
-  subject,
-  html,
-}) {
+ export async function sendEmail({ user_address, collection_name, subject, body}) {
   try {
-    await this.fetch.sendEmailCall({
-      address,
-      from,
-      fromName,
-      replyTo,
-      replyToName,
-      subject,
-      html,
-    });
+    await this.fetch.sendEmailCall({user_address, collection_name, subject, body});
     return true;
   } catch (err) {
     console.log({ err });
@@ -32,9 +16,9 @@
  * It sends an SMS to the address provided.
  * @returns A boolean value of true if the SMS was sent.
  */
-export async function sendSMS({ address, text }) {
+export async function sendSMS({ user_address, collection_name, text }) {
   try {
-    await this.fetch.sendSMSCall({ address, text });
+    await this.fetch.sendSMSCall({ user_address, collection_name, text });
     return true;
   } catch (err) {
     console.log({ err });
@@ -43,16 +27,46 @@ export async function sendSMS({ address, text }) {
 }
 
 /**
- * It updates the profile of the user.
- * @param address - The address of the user you want to update the profile for.
- * @param value - The value to be encrypted and stored in the database.
- * @returns A boolean value of true.
+ * It sends an email to the address provided.
+ * @returns A boolean value of true if the email was sent.
  */
-export async function updateProfile(address, value) {
+ export async function sendBulkEmail({collection_name, subject, body}) {
   try {
+    await this.fetch.sendBulkEmailCall({collection_name, subject, body});
+    return true;
+  } catch (err) {
+    console.log({ err });
+    throw new Error(err);
+  }
+}
+
+/**
+ * It sends an SMS to the address provided.
+ * @returns A boolean value of true if the SMS was sent.
+ */
+export async function sendBulkSMS({collection_name, text }) {
+  try {
+    await this.fetch.sendBulkSMSCall({collection_name, text });
+    return true;
+  } catch (err) {
+    console.log({ err });
+    throw new Error(err);
+  }
+}
+
+
+/**
+ * It takes an address, a value, and a collection name, encrypts the value, and then updates the
+ * profile with the encrypted value
+ * @returns A boolean value.
+ */
+export async function updateProfile({user_address, value, collection_name}) {
+  try {
+    let email_activated = value && value.email && value.email.length > 1 ? true : false;
+    let phone_activated = value && value.phone && value.phone.length > 1 ? true : false;
+    await this.fetch.getNotificationGroupByName({collection_name});
     let {encryption_key_id, ciphertext} = await this.encrypt(value);
-    console.log({address});
-    await this.fetch.updateProfile({address, ciphertext, encryption_key_id});
+    await this.fetch.updateProfile({collection_name, user_address, ciphertext, encryption_key_id, email_activated, phone_activated});
   }
   catch(err){
     console.log({err})
@@ -61,15 +75,12 @@ export async function updateProfile(address, value) {
   return true;
 }
 
-
 /**
  * It fetches profiles from the server.
  * @param params 
  */
-export async function getProfiles(params){
-  let limit = params && params.limit ? params.limit : 50;
-  let offset = params && params.offset ? params.offset : 0;
-  let data = await this.fetch.getProfiles({ limit, offset });
+export async function getProfiles({limit, offset, collection_name}){
+  let data = await this.fetch.getProfiles({limit, offset, collection_name});
   return data;
 }
 
@@ -78,7 +89,27 @@ export async function getProfiles(params){
  * @param address - The address of the user you want to get the profile of.
  * @returns The data is being returned.
  */
-export async function getProfile(address){
-  let data = await this.fetch.getProfile(address);
+export async function getProfile({user_address, collection_name}){
+  let data = await this.fetch.getProfile({user_address, collection_name});
+  return data;
+}
+
+export async function getNotificationGroupByName({collection_name}){
+  let data = await this.fetch.getNotificationGroupByName({collection_name});
+  return data;
+}
+
+export async function getNotificationGroups(){
+  let data = await this.fetch.getNotificationGroups();
+  return data;
+}
+
+export async function createNotificationGroup({contract_address, collection_name}) {
+  let data = await this.fetch.createNotificationGroup({contract_address, collection_name});
+  return data;
+}
+
+export async function updateIntroductionMessage({notification_group_id, email_subject, email_body, sms_text}) {
+  let data = await this.fetch.updateIntroductionMessage({notification_group_id, email_subject, email_body, sms_text});
   return data;
 }

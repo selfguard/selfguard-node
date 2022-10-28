@@ -1,6 +1,5 @@
 import {Crypto} from '@peculiar/webcrypto';
 import { generateChunks } from './files.js';
-import QuickEncrypt from 'quick-encrypt';
 import fs from 'fs';
 const {createHmac} = await import('node:crypto');
 
@@ -132,10 +131,6 @@ export async function decryptValue(encrypted_value, encryption_key){
 	let plaintextbytes = await decryptBytes(bytes, encryption_key);
 	let text = new TextDecoder("utf-8").decode(plaintextbytes);
 	return text;
-}
-
-export function decryptWithPrivateKey(encryption_key, private_key){
-	return QuickEncrypt.decrypt(encryption_key, private_key);
 }
 
 /**

@@ -11,7 +11,8 @@ import {initArray, addUserToArray, addToArray, getArray, getArrayNames, getMyEnc
 //Key Value Functions
 import {get, put, getKeys} from './modules/key_value.js';
 //Notification Functions
-import {sendEmail, sendSMS, updateProfile, getProfiles, getProfile} from './modules/notifications.js';
+import {sendEmail, sendSMS, updateProfile, getProfiles, sendBulkEmail, sendBulkSMS, updateIntroductionMessage,
+  getProfile, createNotificationGroup, getNotificationGroupByName, getNotificationGroups} from './modules/notifications.js';
 //Event Functions
 import {retrieveEvents} from './modules/events.js';
 
@@ -123,24 +124,48 @@ export default class SelfGuard {
   }
 
   //Notifications Functions
-  async sendEmail({address, from, fromName, replyTo, replyToName, subject, html}){
-    return await sendEmail.call(this, {address, from, fromName, replyTo, replyToName,  subject,  html})
+  async sendEmail({user_address, collection_name, subject, body}){
+    return await sendEmail.call(this, {user_address, collection_name, subject,  body})
   }
 
-  async sendSMS({address, text}){
-    return await sendSMS.call(this, {address, text});
+  async sendSMS({user_address, collection_name, text}){
+    return await sendSMS.call(this, {user_address, collection_name, text});
   }
 
-  async updateProfile(address, value){
-    return await updateProfile.call(this, address, value)
+  async sendBulkEmail({collection_name, subject, body}){
+    return await sendBulkEmail.call(this, {collection_name, subject, body})
   }
 
-  async getProfiles(params){
-    return await getProfiles.call(this, params);
+  async sendBulkSMS({collection_name, text}){
+    return await sendBulkSMS.call(this, {collection_name, text});
   }
 
-  async getProfile(address){
-    return await getProfile.call(this, address);
+  async updateProfile({user_address, value, collection_name}){
+    return await updateProfile.call(this, {user_address, value, collection_name})
+  }
+
+  async getProfiles({limit, offset, collection_name}){
+    return await getProfiles.call(this, {limit, offset, collection_name});
+  }
+
+  async getProfile({user_address, collection_name}) {
+    return await getProfile.call(this, {user_address, collection_name});
+  }
+  
+  async getNotificationGroupByName({collection_name}) {
+    return await getNotificationGroupByName.call(this, {collection_name});
+  }
+
+  async getNotificationGroups() {
+    return await getNotificationGroups.call(this);
+  }
+
+  async createNotificationGroup({contract_address, collection_name}) {
+    return await createNotificationGroup.call(this, {contract_address, collection_name});
+  }
+
+  async updateIntroductionMessage({notification_group_id, email_subject, email_body, sms_text}) {
+    return await updateIntroductionMessage.call(this, {notification_group_id, email_subject, email_body, sms_text});
   }
 
   // Event Functions

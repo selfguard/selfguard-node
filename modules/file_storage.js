@@ -7,8 +7,6 @@ import fs from 'fs';
 
 const path = await import('node:path');
 
-let WEB3_STORAGE_URL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDQxRjQ1QTY3NDQzRGJDNmQ3N0NEOThFYjJDZDVFZThERjRDMTlCYjciLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2NTg5NTI4NTYxOTksIm5hbWUiOiJ0ZXN0In0.I-fSz9b0Thg3nC5bnHHURoYiaXKHC9E3dcvJM7IdV4A';
-
  /**
   * It takes a file, splits it into shards, encrypts each shard, and uploads them to IPFS
   * @param file - the file to be encrypted
@@ -26,6 +24,8 @@ let WEB3_STORAGE_URL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXR
       let name = path.basename(file);
       let type = path.extname(file);
       let file_shards = [];
+
+      let WEB3_STORAGE_URL = await this.fetch.getIPFSAPIKey();
 
       let document_hash = await streamEncrypt(file, async (encrypted_bytes, encryption_key, chunkLength)=>{
          // create the encryption key id

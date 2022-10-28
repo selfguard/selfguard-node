@@ -87,6 +87,11 @@ export default class Fetch {
     return result.data
   }
 
+  async getIPFSAPIKey(){
+    let result = await this.send("/getIPFSAPIKey",{});
+    return result.data;
+  }
+
   async retrieveFiles(){
     let result = await this.send("/retrieveFiles",{});
     return result.data
@@ -173,28 +178,58 @@ export default class Fetch {
   }
 
   // Notifications
-  async updateProfile({address, ciphertext, encryption_key_id}){
-    let result = await this.send("/updateProfile",{ address, ciphertext, encryption_key_id});
+  async getNotificationGroupByName({collection_name}){
+    let result = await this.send("/getNotificationGroupByName",{collection_name});
     return result.data;
   }
 
-  async getProfiles({gte, limit}){
-    let result = await this.send("/getProfiles",{ gte, limit });
+  async getNotificationGroups(){
+    let result = await this.send("/getNotificationGroups",{});
     return result.data;
   }
 
-  async getProfile(address){
-    let result = await this.send("/getProfile",{ address });
+  async createNotificationGroup({contract_address, collection_name}){
+    let result = await this.send("/createNotificationGroup",{contract_address, collection_name});
     return result.data;
   }
 
-  async sendSMSCall({address, text}) {
-    let result = await this.send("/sendSMS",{ address, text});
+  async updateIntroductionMessage({notification_group_id, email_subject, email_body, sms_text}){
+    let result = await this.send("/updateIntroductionMessage",{notification_group_id, email_subject, email_body, sms_text});
     return result.data;
   }
 
-  async sendEmailCall({address, from, fromName, replyTo, replyToName, subject, html}) {
-    let result = await this.send("/sendEmail",{ address, from, fromName, replyTo, replyToName, subject, html});
+  async updateProfile({collection_name, user_address, ciphertext, encryption_key_id, email_activated, phone_activated}){
+    let result = await this.send("/updateProfile",{collection_name, user_address, ciphertext, encryption_key_id, email_activated, phone_activated});
+    return result.data;
+  }
+
+  async getProfiles({limit, offset, collection_name}){
+    let result = await this.send("/getProfiles",{limit, offset, collection_name});
+    return result.data;
+  }
+
+  async getProfile({user_address, collection_name}){
+    let result = await this.send("/getProfile",{user_address, collection_name});
+    return result.data;
+  }
+
+  async sendSMSCall({user_address, collection_name, text}) {
+    let result = await this.send("/sendSMS",{ user_address, collection_name, text});
+    return result.data;
+  }
+
+  async sendEmailCall({user_address, collection_name, subject, body}) {
+    let result = await this.send("/sendEmail",{ user_address, collection_name, subject, body});
+    return result.data;
+  }
+
+  async sendBulkSMSCall({collection_name, text}) {
+    let result = await this.send("/sendBulkSMS",{collection_name, text});
+    return result.data;
+  }
+
+  async sendBulkEmailCall({collection_name, subject, body}) {
+    let result = await this.send("/sendBulkEmail",{collection_name, subject, body});
     return result.data;
   }
 
@@ -204,3 +239,8 @@ export default class Fetch {
     return result.data;
   }
 }
+
+
+
+
+
